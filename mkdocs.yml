@@ -1,0 +1,93 @@
+site_name: The Method on AWS - Guideline
+site_description: Comprehensive guideline for applying The Method from "Righting Software" to AWS serverless services
+site_author: The Method on AWS Team
+
+# Repository
+repo_name: the-method-on-aws
+repo_url: https://github.com/your-org/the-method-on-aws
+
+# Theme configuration
+theme:
+  name: material
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+# Extensions
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+# Navigation structure
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Overview: getting-started/overview.md
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quick-start.md
+  - Guidelines:
+      - Introduction: guidelines/introduction.md
+      - Core Principles: guidelines/core-principles.md
+      - Component Taxonomy: guidelines/component-taxonomy.md
+  - Examples:
+      - Task Management System: examples/task-management.md
+      - E-Commerce Platform: examples/e-commerce.md
+      - Trading System: examples/trading-system.md
+      - Content Management: examples/content-management.md
+  - Reference:
+      - AWS Service Mappings: reference/aws-mappings.md
+      - Best Practices: reference/best-practices.md
+      - Anti-Patterns: reference/anti-patterns.md
+  - About:
+      - Attribution: about/attribution.md
+      - Contributing: about/contributing.md
+
+# Plugins
+plugins:
+  - search
+
+# Extra
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/your-org/the-method-on-aws
