@@ -1,35 +1,44 @@
 # Component Taxonomy
 
-Detailed guide for each component type in The Method.
+The Method, as defined by Juval Löwy in "Righting Software," establishes a precise taxonomy of six component types. Each type serves a specific purpose in encapsulating different forms of volatility. This section provides detailed guidance for each component type, including their characteristics, responsibilities, AWS service mappings, and implementation patterns.
 
 ## Overview
 
-The Method defines six component types. This page provides detailed guidance for each type, including characteristics, responsibilities, AWS mappings, and code examples.
+Löwy's component taxonomy addresses a fundamental challenge in software design: how to organize system building blocks to maximize resilience to change. The taxonomy defines six distinct component types, each designed to encapsulate a specific form of volatility:
+
+- **Managers** - Encapsulate use case sequence volatility
+- **Engines** - Encapsulate business rule volatility
+- **ResourceAccess** - Encapsulate data access pattern volatility
+- **Resources** - Physical storage and infrastructure
+- **Utilities** - Cross-cutting infrastructure services
+- **Clients** - User-facing interfaces and applications
+
+The precision of this taxonomy is critical. Mixing component responsibilities—such as placing business logic in a Manager or data access in an Engine—undermines the volatility encapsulation that makes systems maintainable.
 
 ## Manager Components
 
-### Purpose
+### Purpose and Volatility
 
-Managers encapsulate volatility in use case sequences and workflows.
+As Löwy explains, Managers encapsulate volatility in use case sequences and workflows. When the steps of a business process change—adding new validation, reordering operations, introducing conditional logic—these changes remain isolated within the Manager component.
+
+Managers orchestrate but do not execute. They coordinate Engines and ResourceAccess components to fulfill use cases, but contain no business logic themselves. This separation ensures that changes to business rules (Engine volatility) or data access patterns (ResourceAccess volatility) do not affect workflow orchestration.
 
 ### Characteristics
 
-- Orchestrate business operations
-- Call Engines and ResourceAccess
-- Stateless
-- No business logic
-- One per use case or workflow
+- Orchestrate business operations by coordinating other components
+- Stateless—maintain no state between invocations
+- Contain no business logic—delegate to Engines
+- Perform no I/O operations—delegate to ResourceAccess
+- One Manager per use case or workflow
 
-### AWS Mapping
+### AWS Service Mapping
 
-- **Step Functions** for complex workflows with multiple steps
-- **Lambda** for simple workflows
+In our AWS interpretation:
 
-### When to Use
+- **Step Functions** for complex workflows requiring multiple steps, error handling, and state management
+- **Lambda** for simple workflows with straightforward orchestration
 
-- Use case sequence might change
-- Multiple steps need orchestration
-- Workflow involves multiple Engines or ResourceAccess
+The choice between Step Functions and Lambda depends on workflow complexity. Step Functions provides visual workflow definition, built-in error handling, and state management. Lambda suffices for simple orchestration where these features are unnecessary.
 
 ### Example
 
@@ -62,27 +71,23 @@ export class OrderProcessingManager implements IOrderProcessingManager {
 
 ## Engine Components
 
-### Purpose
+### Purpose and Volatility
 
-Engines encapsulate volatility in business activities and rules.
+Engines encapsulate volatility in business activities and rules. As Löwy emphasizes, business rules change frequently—pricing algorithms evolve, validation criteria adjust, calculation methods refine. Engines isolate these changes, ensuring that rule modifications do not ripple through the system.
+
+The defining characteristic of an Engine is purity: no I/O operations, no external dependencies, only business logic. This purity enables testing, reusability, and parallel execution. An Engine receives inputs, applies business rules, and returns outputs—nothing more.
 
 ### Characteristics
 
-- Pure business logic
-- Stateless
-- Reusable across Managers
-- No I/O operations
-- Deterministic
+- Pure business logic with no side effects
+- Stateless—deterministic outputs for given inputs
+- Reusable across multiple Managers
+- No I/O operations—no database calls, no API calls, no file access
+- Testable in isolation without mocks or stubs
 
-### AWS Mapping
+### AWS Service Mapping
 
-- **Lambda** functions
-
-### When to Use
-
-- Business rules might change
-- Logic needs to be reused
-- Calculation or validation required
+In our AWS interpretation, Engines are implemented as **Lambda functions** focused exclusively on business logic. The Lambda execution model aligns well with Engine characteristics: stateless, event-driven, and independently scalable.
 
 ### Example
 
@@ -120,28 +125,27 @@ export class PricingEngine implements IPricingEngine {
 
 ## ResourceAccess Components
 
-### Purpose
+### Purpose and Volatility
 
-ResourceAccess components encapsulate volatility in accessing resources.
+ResourceAccess components encapsulate volatility in data access patterns. As Löwy explains, how you access data changes independently of what data you access. Database schemas evolve, query patterns optimize, storage technologies migrate. ResourceAccess components isolate these changes from business logic.
+
+The critical insight Löwy provides is the concept of **atomic business verbs**. ResourceAccess components do not expose generic CRUD operations (create, read, update, delete). Instead, they expose operations that reflect business intent: `markOrderAsPaid()`, `cancelSubscription()`, `approveTimesheet()`. This approach encapsulates not just the data access mechanism but also the business semantics of data modifications.
 
 ### Characteristics
 
-- Expose atomic business verbs
-- One per resource type
-- Encapsulate data access patterns
-- NOT generic CRUD
+- Expose atomic business verbs, not generic CRUD
+- One ResourceAccess component per resource type
+- Encapsulate all data access patterns for a resource
+- Translate business operations into storage operations
+- Isolate business logic from storage implementation details
 
-### AWS Mapping
+### AWS Service Mapping
 
-- **Lambda** functions with AWS SDK
+In our AWS interpretation, ResourceAccess components are implemented as **Lambda functions** that use the AWS SDK to interact with storage services. Each ResourceAccess Lambda encapsulates all access patterns for a specific resource (e.g., OrderDataAccess for the Orders table).
 
-### When to Use
+### The Atomic Business Verb Principle
 
-- Data access patterns might change
-- Need abstraction over storage
-- Multiple Managers/Engines access same resource
-
-### Atomic Business Verbs
+This principle, central to The Method, deserves emphasis. Consider the difference:
 
 ❌ **WRONG: Generic CRUD**
 
@@ -202,30 +206,32 @@ export class OrderDataAccess implements IOrderDataAccess {
 
 ## Resource Components
 
-### Purpose
+### Purpose and Nature
 
-Resources are the actual physical storage and infrastructure.
+Resources represent the physical infrastructure—databases, storage, queues, and other managed services. Unlike the other component types, Resources contain no custom code. They are purely configuration, defining the storage and messaging infrastructure that ResourceAccess components interact with.
+
+As Löwy explains, Resources encapsulate storage volatility. When storage requirements change—migrating from one database technology to another, adjusting capacity, modifying retention policies—these changes remain isolated within Resource configuration. The ResourceAccess components that interact with Resources remain unchanged, as they expose business operations rather than storage-specific operations.
 
 ### Characteristics
 
-- Databases, queues, storage buckets
+- Pure infrastructure—no custom code
 - Managed by cloud provider
-- No custom code
-- Configuration only
+- Configuration-only definitions
+- Encapsulate storage technology choices
+- Accessed exclusively through ResourceAccess components
 
-### AWS Mapping
+### AWS Service Mapping
 
-- **DynamoDB** for NoSQL databases
-- **RDS/Aurora** for relational databases
-- **S3** for object storage
-- **SQS** for message queues
-- **SNS** for pub/sub messaging
+In our AWS interpretation, Resources map to managed storage and messaging services:
 
-### When to Use
+- **DynamoDB** - NoSQL database for high-scale, key-value access patterns
+- **RDS/Aurora** - Relational databases for complex queries and transactions
+- **S3** - Object storage for files, documents, and large binary data
+- **SQS** - Message queues for asynchronous processing
+- **SNS** - Pub/sub messaging for event distribution
+- **Kinesis** - Stream processing for real-time data flows
 
-- Need to store data
-- Need message queues
-- Need file storage
+The choice of Resource type depends on access patterns, consistency requirements, and scale characteristics—not on functional decomposition.
 
 ### Example
 
@@ -253,32 +259,34 @@ const orderQueue = new sqs.Queue(this, "OrderQueue", {
 
 ## Utility Components
 
-### Purpose
+### Purpose and Cross-Cutting Concerns
 
-Utilities provide cross-cutting infrastructure services.
+Utilities provide infrastructure services that span all layers—logging, monitoring, security, messaging, and configuration. As Löwy explains, Utilities represent cross-cutting concerns that every component may need but that don't belong to any specific layer.
+
+The key characteristic of Utilities is their universal availability. Any component—Manager, Engine, ResourceAccess—can use Utilities without violating layer communication rules. This exception to the layered architecture reflects the reality that logging, monitoring, and security are pervasive concerns that cannot be confined to a single layer.
 
 ### Characteristics
 
-- Available to all layers
-- Logging, monitoring, security
-- Messaging, configuration
-- No business logic
+- Available to all layers without restriction
+- Provide infrastructure services, not business logic
+- Stateless and reusable
+- No dependencies on business components
+- Examples: logging, monitoring, security, messaging, configuration
 
-### AWS Mapping
+### AWS Service Mapping
 
-- **CloudWatch** for logging and monitoring
-- **X-Ray** for distributed tracing
-- **SNS** for notifications
-- **EventBridge** for event routing
-- **Secrets Manager** for secrets
-- **IAM** for security
+In our AWS interpretation, Utilities map to AWS infrastructure services:
 
-### When to Use
+- **CloudWatch Logs** - Centralized logging for all components
+- **CloudWatch Metrics** - Performance monitoring and alerting
+- **X-Ray** - Distributed tracing across service boundaries
+- **SNS** - Notification delivery for alerts and events
+- **EventBridge** - Event routing and filtering
+- **Secrets Manager** - Secure credential and configuration storage
+- **IAM** - Authentication and authorization
+- **Systems Manager Parameter Store** - Configuration management
 
-- Need logging or monitoring
-- Need to send notifications
-- Need distributed tracing
-- Need secrets management
+These services provide the infrastructure foundation that enables the business logic components to function.
 
 ### Example
 
@@ -314,27 +322,31 @@ export class NotificationUtility {
 
 ## Client Components
 
-### Purpose
+### Purpose and User Interface Volatility
 
-Clients are user-facing applications and interfaces.
+Clients represent user-facing applications and interfaces—web applications, mobile apps, command-line tools, and external APIs. As Löwy explains, Clients encapsulate user interface volatility. When presentation requirements change—adding a mobile app alongside a web interface, introducing a partner API, redesigning the user experience—these changes remain isolated within Client components.
+
+The critical architectural rule for Clients is that they call only Managers, never Engines or ResourceAccess directly. This constraint ensures that business logic and data access remain encapsulated, preventing UI concerns from leaking into business logic layers.
 
 ### Characteristics
 
-- Present UI to users
-- Call Managers (not Engines or ResourceAccess)
-- Web, mobile, CLI, API
+- Present user interfaces and APIs
+- Call only Managers—never Engines or ResourceAccess
+- Encapsulate presentation logic and user interaction
+- Multiple Clients can coexist (web, mobile, API)
+- No business logic—delegate to Managers
 
-### AWS Mapping
+### AWS Service Mapping
 
-- **CloudFront + S3** for static web apps
-- **Amplify** for full-stack apps
-- **API Gateway** for REST/HTTP APIs
+In our AWS interpretation, Clients map to various AWS frontend and API services:
 
-### When to Use
+- **CloudFront + S3** - Static web applications (React, Vue, Angular)
+- **Amplify** - Full-stack web and mobile applications with backend integration
+- **API Gateway** - REST and HTTP APIs for external consumers
+- **AppSync** - GraphQL APIs with real-time capabilities
+- **Elastic Beanstalk** - Server-rendered web applications
 
-- Need user interface
-- Need external API
-- Need partner integration
+The choice depends on client requirements: static vs. dynamic, web vs. mobile, REST vs. GraphQL.
 
 ### Example
 
@@ -355,25 +367,42 @@ task.addMethod("PUT", new apigateway.LambdaIntegration(taskManager));
 
 ## Component Selection Guide
 
-Use this decision tree to select the right component type:
+Selecting the appropriate component type is fundamental to applying The Method correctly. Use this decision process:
 
-```
-Does it orchestrate a workflow?
-├─ Yes → Manager
-└─ No
-    ├─ Does it contain business logic?
-    │   ├─ Yes → Engine
-    │   └─ No
-    │       ├─ Does it access a resource?
-    │       │   ├─ Yes → ResourceAccess
-    │       │   └─ No
-    │       │       ├─ Is it storage/queue/database?
-    │       │       │   ├─ Yes → Resource
-    │       │       │   └─ No
-    │       │       │       ├─ Is it cross-cutting infrastructure?
-    │       │       │       │   ├─ Yes → Utility
-    │       │       │       │   └─ No → Client
-```
+**1. Does it orchestrate a workflow or use case?**
+
+- Yes → **Manager**
+- No → Continue
+
+**2. Does it contain business rules or calculations?**
+
+- Yes → **Engine**
+- No → Continue
+
+**3. Does it access a database, queue, or storage?**
+
+- Yes → **ResourceAccess**
+- No → Continue
+
+**4. Is it physical storage or infrastructure?**
+
+- Yes → **Resource**
+- No → Continue
+
+**5. Is it a cross-cutting infrastructure service?**
+
+- Yes → **Utility**
+- No → **Client**
+
+### Common Mistakes
+
+**Mixing Manager and Engine responsibilities**: Placing business logic in a Manager violates the separation of concerns. Managers orchestrate; Engines execute logic.
+
+**Generic CRUD in ResourceAccess**: Exposing `update()` or `delete()` instead of atomic business verbs like `markOrderAsPaid()` or `cancelSubscription()` loses business semantics.
+
+**Clients calling Engines directly**: Skipping the Manager layer creates tight coupling between UI and business logic, making both harder to change.
+
+**Business logic in Utilities**: Utilities provide infrastructure, not business logic. If it contains business rules, it belongs in an Engine.
 
 ## Next Steps
 
