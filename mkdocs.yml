@@ -133,6 +133,7 @@ nav:
       - Introduction: guidelines/introduction.md
       - Core Principles: guidelines/core-principles.md
       - Component Taxonomy: guidelines/component-taxonomy.md
+      - Main Guideline: guidelines/main-guideline.md
   - Examples:
       - Task Management System: examples/task-management.md
       - E-Commerce Platform: examples/e-commerce.md
