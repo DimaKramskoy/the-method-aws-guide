@@ -129,16 +129,11 @@ nav:
       - Overview: getting-started/overview.md
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quick-start.md
-  - Guidelines:
+  - The Method:
       - Introduction: guidelines/introduction.md
       - Core Principles: guidelines/core-principles.md
       - Component Taxonomy: guidelines/component-taxonomy.md
-      - Main Guideline: guidelines/main-guideline.md
-  - Examples:
-      - Task Management System: examples/task-management.md
-      - E-Commerce Platform: examples/e-commerce.md
-      - Trading System: examples/trading-system.md
-      - Content Management: examples/content-management.md
+      - Complete Guide: guidelines/main-guideline.md
   - Reference:
       - AWS Service Mappings: reference/aws-mappings.md
       - Best Practices: reference/best-practices.md
